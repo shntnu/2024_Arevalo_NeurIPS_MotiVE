@@ -8,14 +8,14 @@ See the [Wiki](https://github.com/carpenter-singh-lab/motive/wiki) for full docu
 
 ## Installation
 
-We recommend using [Mamba](https://github.com/conda-forge/miniforge#mambaforge) for
-environment management. The following commands clone the repository, create the environment from
-scratch, and install the required packages.
+We recommend using [uv](https://docs.astral.sh/uv/) for
+environment management. The following commands clone the repository, create the environment, and install the required packages.
 
 ```bash
 git clone https://github.com/carpenter-singh-lab/motive.git
-mamba env create --file environment.yml
-mamba activate graphdti
+git checkout motivev2
+uv sync
+source .venv/bin/activate
 ```
 
 ## Download data
@@ -41,17 +41,17 @@ With `1` being the number of cores you want to use.
 ## Train
 Run the following command to train a model on the MOTI$`\mathcal{VE}`$ dataset. The config file should indicate the graph type (optimized configs are only provided for the `bipartite` and `st_expanded` graph structures), gene type, data split, and model. An example is provided below.
 
-```python run_training.py configs/train/st_expanded/cold_source/gnn_cp.json outputs/```
+`snakemake -s train.smk --configfile gnn.json --config output_path=outputs/`
 
-The training will produce a `test_results.parquet` file in the `outputs/` folder with the predicted scores and percentiles for each source target pair in the test set.
+The training will produce a `results.parquet` file in the `outputs/` folder with the predicted scores for each source target pair in the test set.
 
-|              |    score | y_pred   |   y_true |   percentile |
-|:-------------|---------:|:---------|---------:|-------------:|
-| (1537, 1352) | 0.992261 | True     |        1 |     1        |
-| (336, 2637)  | 0.977271 | True     |        1 |     0.999981 |
-| (1714, 2506) | 0.949711 | True     |        1 |     0.999962 |
-| (40, 1452)   | 0.923437 | True     |        1 |     0.999943 |
-| (412, 110)   | 0.917436 | True     |        1 |     0.999924 |
+|   source |   target |    score |    logits | y_pred   | y_true   |
+|---------:|---------:|---------:|----------:|:---------|:---------|
+|        4 |      172 | 0.374103 | -0.514653 | False    | True     |
+|        5 |     1501 | 0.603371 |  0.419531 | True     | True     |
+|        6 |      797 | 0.402376 | -0.395574 | False    | True     |
+|        7 |      179 | 0.538556 |  0.154529 | True     | True     |
+|        7 |      651 | 0.570341 |  0.283244 | True     | True     |
 
 
 ## Explore params

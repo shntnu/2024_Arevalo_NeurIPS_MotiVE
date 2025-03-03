@@ -67,6 +67,7 @@
                 python312Packages.venvShellHook
                 gcc
                 duckdb
+                uv
               ] ++ libList;
               venvDir = "./.venv";
               postVenvCreation = ''
