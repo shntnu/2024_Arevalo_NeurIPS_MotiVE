@@ -32,7 +32,7 @@ def heatmap(config_path, scores_path, plot_path):
     source_ha = pch.HeatmapAnnotation(
         axis=0,
         orientation="right",
-        Seen=pch.anno_simple(seen.astype(str), legend=True),
+        Seen=pch.anno_simple(seen.astype(str), cmap="Set1", legend=True),
     )
 
     pch.ClusterMapPlotter(

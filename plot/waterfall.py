@@ -37,8 +37,11 @@ def waterfall(config_path, preds_path, waterfall_path):
     target_type = config["target_type"]
 
     scores = pd.read_parquet(preds_path)
+    # The random split has no single held-out node type (no "random" column);
+    # rank per source (compound), matching the source-centric evaluation.
+    group_col = "source" if leave_out == "random" else leave_out
     scores["rank"] = (
-        scores.groupby(leave_out)["score"]
+        scores.groupby(group_col)["score"]
         .rank(method="min", ascending=False, pct=False)
         .astype(int)
     )
