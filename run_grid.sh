@@ -6,12 +6,14 @@
 # Run it inside the pixi env, e.g. on a GPU server:
 #   nix develop -c pixi run bash run_grid.sh
 #
-# These models are tiny (a 200-epoch GNN uses ~7 GB GPU, 0% GPU util - the work
-# is CPU-bound: neighbor sampling, negative sampling, mAP nulls). So on a big
-# box, run many configs at once and thread-cap each:
-#   JOBS=8 THREADS=32 nix develop -c pixi run bash run_grid.sh
+# These models are tiny (a 200-epoch GNN uses ~7 GB GPU, ~0% util - the work is
+# CPU-bound: neighbor sampling, negative sampling, mAP nulls). So on a big box,
+# run many configs at once, round-robin them across the GPUs, and thread-cap each:
+#   GPUS=4 JOBS=16 THREADS=16 nix develop -c pixi run bash run_grid.sh
 # JOBS>1 adds --nolock (safe: configs write to disjoint hash dirs) and logs each
-# config under logs/. JOBS=1 (default) runs sequentially with normal locking.
+# config under logs/. GPUS round-robins CUDA_VISIBLE_DEVICES so configs spread
+# over the GPUs (one GPU can't hold many of these at ~7 GB each). Defaults
+# (JOBS=1, GPUS=1) run sequentially on GPU 0 with normal locking.
 #
 # Defaults to the metrics_only target (no per-config plots). Override any axis
 # (space-separated), epochs, or target via env vars. Quick smoke:
@@ -27,6 +29,7 @@ OUT="${OUT:-outputs}"
 EPOCHS="${EPOCHS:-200}"
 CORES="${CORES:-2}"
 JOBS="${JOBS:-1}"          # how many configs to run concurrently
+GPUS="${GPUS:-1}"          # number of GPUs to round-robin configs across
 THREADS="${THREADS:-}"     # per-config CPU thread cap (OMP/MKL); empty = unset
 SNAKE_TARGET="${TARGET:-metrics_only}"
 read -ra GRAPHS  <<< "${GRAPHS:-bipartite st_expanded}"
@@ -53,15 +56,15 @@ model_overrides() {
 }
 
 run_one() {
-  local label="$1"; shift
+  local gpu="$1" label="$2"; shift 2
   local log="logs/${label//\//_}.log"
-  local pfx=()
-  [ -n "$THREADS" ] && pfx=(env OMP_NUM_THREADS="$THREADS" MKL_NUM_THREADS="$THREADS" OPENBLAS_NUM_THREADS="$THREADS")
+  local pfx=(env CUDA_VISIBLE_DEVICES="$gpu")
+  [ -n "$THREADS" ] && pfx+=(OMP_NUM_THREADS="$THREADS" MKL_NUM_THREADS="$THREADS" OPENBLAS_NUM_THREADS="$THREADS")
   if "${pfx[@]}" snakemake -s train.smk "$SNAKE_TARGET" --configfile gnn.json \
        --config "$@" --cores "$CORES" "${snake_flags[@]}" >"$log" 2>&1; then
-    echo "OK    $label" | tee -a "$RESULTS"
+    echo "OK    [gpu$gpu] $label" | tee -a "$RESULTS"
   else
-    echo "FAIL  $label  (tail: $(tail -n1 "$log"))" | tee -a "$RESULTS"
+    echo "FAIL  [gpu$gpu] $label  (tail: $(tail -n1 "$log"))" | tee -a "$RESULTS"
   fi
 }
 
@@ -76,8 +79,9 @@ for tgt in "${TARGETS[@]}"; do
         cfg=(model="$model" graph_type="$graph" leave_out="$split" target_type="$tgt" num_epochs="$EPOCHS")
         [ "$init" != "-" ] && cfg+=(initialization="$init")
         read -ra extra <<< "$(model_overrides "$model")"
-        echo ">>> [$n] launch $label  ${extra[*]:-}"
-        run_one "$label" output_path="$OUT" "${cfg[@]}" "${extra[@]}" &
+        gpu=$(( (n - 1) % GPUS ))
+        echo ">>> [$n] launch $label  [gpu$gpu]  ${extra[*]:-}"
+        run_one "$gpu" "$label" output_path="$OUT" "${cfg[@]}" "${extra[@]}" &
         # throttle to JOBS concurrent
         while [ "$(jobs -rp | wc -l)" -ge "$JOBS" ]; do wait -n; done
       done
