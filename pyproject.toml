@@ -31,6 +31,10 @@ platforms = ["osx-arm64", "linux-64"]
 # neighbor sampling on every platform.
 [tool.pixi.dependencies]
 python = "3.12.*"
+# pandas 3.0 removed DataFrame.applymap, which PyComplexHeatmap 1.8.5 (latest)
+# still uses in oncoPrintPlotter (the waterfall plot). The codebase targets the
+# pandas 2.x era anyway, so cap below 3.
+pandas = "<3"
 pytorch_geometric = ">=2.6"
 pytorch_scatter = "*"
 pytorch_sparse = "*"
