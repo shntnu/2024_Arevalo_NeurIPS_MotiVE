@@ -17,7 +17,12 @@ uv sync                       # create .venv and install locked deps
 source .venv/bin/activate     # or prefix commands with `uv run`
 ```
 
-A Nix `flake.nix` + `.envrc` provide a dev shell (C runtime libs the wheels link against, plus `uv`, `duckdb`). `direnv allow` auto-enters it; or `nix develop`. The shell runs `uv sync` on entry. The flake is cross-platform: **x86_64-linux** gets CUDA and torch from nixpkgs (the GPU servers - spirit, oppy, karkinos); **macOS** skips CUDA/nix-torch and lets uv install CPU/MPS torch wheels (so a Mac can edit and smoke-test, but real training wants a GPU box).
+### Two environments by platform
+
+- **Linux GPU servers (spirit, oppy, karkinos)** use **uv + the Nix flake**. A Nix `flake.nix` + `.envrc` give a dev shell (CUDA + torch from nixpkgs, plus `uv`, `duckdb`, C runtime libs); `direnv allow` auto-enters it (or `nix develop`), and the shell runs `uv sync`. This is the canonical path and matches `pyproject.toml`/`uv.lock`.
+- **macOS (Apple Silicon)** uses **pixi + conda-forge** (`pixi.toml`/`pixi.lock`), not uv. The uv path can't resolve on a Mac: `pyproject.toml` hard-depends on `pyg-lib`, which has no Apple-Silicon build anywhere. conda-forge ships prebuilt osx-arm64 PyTorch (with MPS) and the PyG compiled extensions, and `pyg-lib` is simply omitted - `torch-sparse` covers neighbor sampling instead. Run things with `pixi run <cmd>` (e.g. `pixi run snakemake -s train.smk ...`). Note conda-forge currently resolves a newer torch/pyg (2.7.x) than the Linux pins (2.5.1/2.6.1); fine for dev, worth knowing.
+
+`DEVICE` (`motive/base.py`) auto-selects **CUDA -> MPS -> CPU** and is shared via `from motive import DEVICE`. Because `PrefetchLoader`'s async transfer is CUDA-only and yields unallocated tensors on MPS, `to_device_loader` uses `PrefetchLoader` on CUDA and moves batches synchronously elsewhere; `PYTORCH_ENABLE_MPS_FALLBACK=1` (set in `pixi.toml`) covers unimplemented MPS ops. So full training runs on Mac GPU via Metal - slower than the H100/RTX boxes, good for development and small runs.
 
 Build the dataset (downloads `inputs/` from S3, generates `data/`). Alternatively `aws s3 sync` the prebuilt `data/` and `inputs/` (see README):
 
