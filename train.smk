@@ -44,6 +44,18 @@ rule all:
         ),
 
 
+# Metrics only (no per-config plots) - the target for benchmark grids, where
+# train -> infer -> metrics per config is what matters and you make the
+# interpretive plots only for a chosen model. Run: snakemake -s train.smk metrics_only ...
+rule metrics_only:
+    input:
+        expand(
+            "{output_path}/{target_type}/{leave_out}/{graph_type}/{model}/{hash}/{infer_mode}/test/metrics.done",
+            **config,
+            infer_mode=["sampled", "cartesian"],
+        ),
+
+
 rule metrics:
     input:
         expand(
