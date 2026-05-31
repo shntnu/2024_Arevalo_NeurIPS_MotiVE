@@ -366,7 +366,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
       - pypi: .
       - pypi: https://files.pythonhosted.org/packages/35/ac/03133fd5161356dde8a43bd6475514711bd1984d6010134c0cf6a132ef02/pycomplexheatmap-1.8.5-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/b7/2a/86a6255d7e892419833ba5951f7574d02c9c83648cd939bb5a921e386858/copairs-0.5.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/c5/af/97874d045355273b3f006de258457a62d7f02bfb5c5359f23a5c841d3779/copairs-0.4.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/cf/f7/3367feadd4ab56783b0971c9b7edfbdd68e0c70ce877949a5dd2117ed4a0/palettable-3.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e4/de/e7abc784b00de9d05999657d29187f1f7a3406ed10ecaf164de06482608f/torcheval-0.0.7-py3-none-any.whl
   osx:
@@ -693,7 +693,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
       - pypi: .
       - pypi: https://files.pythonhosted.org/packages/35/ac/03133fd5161356dde8a43bd6475514711bd1984d6010134c0cf6a132ef02/pycomplexheatmap-1.8.5-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/b7/2a/86a6255d7e892419833ba5951f7574d02c9c83648cd939bb5a921e386858/copairs-0.5.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/c5/af/97874d045355273b3f006de258457a62d7f02bfb5c5359f23a5c841d3779/copairs-0.4.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/cf/f7/3367feadd4ab56783b0971c9b7edfbdd68e0c70ce877949a5dd2117ed4a0/palettable-3.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e4/de/e7abc784b00de9d05999657d29187f1f7a3406ed10ecaf164de06482608f/torcheval-0.0.7-py3-none-any.whl
 packages:
@@ -8340,30 +8340,21 @@ packages:
   - scipy
   - palettable
   requires_python: '>=3.0'
-- pypi: https://files.pythonhosted.org/packages/b7/2a/86a6255d7e892419833ba5951f7574d02c9c83648cd939bb5a921e386858/copairs-0.5.4-py3-none-any.whl
+- pypi: https://files.pythonhosted.org/packages/c5/af/97874d045355273b3f006de258457a62d7f02bfb5c5359f23a5c841d3779/copairs-0.4.5-py3-none-any.whl
   name: copairs
-  version: 0.5.4
-  sha256: e24e41ffdcfabf8d76b4288423f8951ea9c69884d5c4e88f8d9d33ff1ee32bbf
+  version: 0.4.5
+  sha256: 6f5009c9ce2dcf172df961cc6ebdcfdafc282e41040434953515095452f3a8ee
   requires_dist:
   - pandas
   - tqdm
   - statsmodels
-  - duckdb>=1.4.0
-  - jupyter>=1.1.1 ; extra == 'dev'
-  - pytest>=8.3.4 ; extra == 'dev'
   - ruff ; extra == 'dev'
-  - scikit-learn>=1.3.2 ; extra == 'dev'
-  - pytest>=8.3.4 ; extra == 'test'
-  - scikit-learn>=1.3.2 ; extra == 'test'
   - plotly ; extra == 'plot'
+  - scikit-learn ; extra == 'test'
+  - pytest ; extra == 'test'
   - notebook ; extra == 'demo'
   - matplotlib ; extra == 'demo'
-  - mkdocs ; extra == 'docs'
-  - mkdocs-material ; extra == 'docs'
-  - mkdocstrings[python]>=0.29.1 ; extra == 'docs'
-  - mkdocs-section-index ; extra == 'docs'
-  - mkdocs-jupyter ; extra == 'docs'
-  requires_python: '>=3.9,<3.13'
+  requires_python: '>=3.8'
 - pypi: https://files.pythonhosted.org/packages/cf/f7/3367feadd4ab56783b0971c9b7edfbdd68e0c70ce877949a5dd2117ed4a0/palettable-3.3.3-py2.py3-none-any.whl
   name: palettable
   version: 3.3.3

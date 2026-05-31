@@ -57,7 +57,7 @@ pip = "*"
 # matching the old `uv sync` behavior (needed by e.g. pytest tests/).
 motive = { path = ".", editable = true }
 # Not on conda-forge (or lab package); installed by pixi's PyPI layer.
-copairs = ">=0.4.2"
+copairs = ">=0.4.2,<0.5"   # 0.5 added a normalized_average_precision column the repo's AP step doesn't produce
 torcheval = ">=0.0.7"
 pycomplexheatmap = ">=1.8.1"
 
