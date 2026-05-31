@@ -34,7 +34,8 @@ read -ra SPLITS  <<< "${SPLITS:-random source target}"
 read -ra TARGETS <<< "${TARGETS:-orf crispr}"
 read -ra MODELS  <<< "${MODELS:-gnn:cp gnn:embs gat:cp gat:embs gin:cp gin:embs mlp:- bilinear:-}"
 
-snake_flags=()
+# --rerun-incomplete: recover configs left half-written by a killed run.
+snake_flags=(--rerun-incomplete)
 [ "$JOBS" -gt 1 ] && snake_flags+=(--nolock)
 RESULTS="$(mktemp)"
 mkdir -p logs
