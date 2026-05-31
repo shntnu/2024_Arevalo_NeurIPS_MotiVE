@@ -45,6 +45,7 @@ umap-learn = ">=0.5.7"
 fastcluster = ">=1.2.6"
 duckdb = "*"
 awscli = "*"            # data download (aws s3 sync) + the snakemake fetch rule
+setuptools = "*"        # pkg_resources, needed by the tensorboard CLI + editable build
 pip = "*"
 
 [tool.pixi.pypi-dependencies]
