@@ -30,12 +30,15 @@ platforms = ["osx-arm64", "linux-64"]
 # no Apple-Silicon build exists and it is optional - torch-sparse handles
 # neighbor sampling on every platform.
 [tool.pixi.dependencies]
+# Upper bounds pin the validated working line (torch 2.7 / pyg 2.7 / numpy 2 /
+# pandas 2). pixi.lock already pins exact versions; these caps stop a future
+# `pixi lock`/`update` from pulling a bleeding-edge release that removes APIs
+# the code or its libs use (pandas 3 dropped applymap, numpy 2 dropped in1d,
+# copairs 0.5 changed schema - all of which bit us once).
 python = "3.12.*"
-# pandas 3.0 removed DataFrame.applymap, which PyComplexHeatmap 1.8.5 (latest)
-# still uses in oncoPrintPlotter (the waterfall plot). The codebase targets the
-# pandas 2.x era anyway, so cap below 3.
-pandas = "<3"
-pytorch_geometric = ">=2.6"
+numpy = ">=2,<3"
+pandas = ">=2,<3"
+pytorch_geometric = ">=2.6,<2.8"
 pytorch_scatter = "*"
 pytorch_sparse = "*"
 pytorch_cluster = "*"
@@ -60,7 +63,7 @@ motive = { path = ".", editable = true }
 # Not on conda-forge (or lab package); installed by pixi's PyPI layer.
 copairs = ">=0.4.2,<0.5"   # 0.5 added a normalized_average_precision column the repo's AP step doesn't produce
 torcheval = ">=0.0.7"
-pycomplexheatmap = ">=1.8.1"
+pycomplexheatmap = ">=1.8.1,<1.9"   # cap minor; oncoPrint API has drifted across releases
 
 # Linux + CUDA: pytorch-gpu pulls the CUDA build; the cuda system-requirement
 # makes the solver pick CUDA variants of the PyG extensions too.
@@ -68,13 +71,13 @@ pycomplexheatmap = ">=1.8.1"
 platforms = ["linux-64"]
 system-requirements = { cuda = "12" }
 [tool.pixi.feature.linux-gpu.dependencies]
-pytorch-gpu = ">=2.5"
+pytorch-gpu = ">=2.5,<2.8"
 
 # macOS (Apple Silicon): plain pytorch ships MPS support.
 [tool.pixi.feature.osx-mps]
 platforms = ["osx-arm64"]
 [tool.pixi.feature.osx-mps.dependencies]
-pytorch = ">=2.5"
+pytorch = ">=2.5,<2.8"
 [tool.pixi.feature.osx-mps.activation.env]
 # Let unimplemented MPS ops fall back to CPU instead of erroring.
 PYTORCH_ENABLE_MPS_FALLBACK = "1"
