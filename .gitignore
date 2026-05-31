@@ -10,3 +10,4 @@ data/
 run.sh
 test/
 .pixi/
+*.egg-info/

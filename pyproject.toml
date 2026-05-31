@@ -1,41 +1,94 @@
+# Single source of truth, managed by pixi (no uv). Mirrors the nahual
+# pixi pattern: one workspace, two platform features gated by environment.
+#   GPU servers (Linux+CUDA, the default):  pixi run snakemake -s train.smk ...
+#   macOS (Apple Silicon, MPS):             pixi run -e osx snakemake -s train.smk ...
 [project]
 name = "motive"
 version = "0.2.0"
 description = "A Drug-Target Interaction Graph For Inductive Link Prediction"
 readme = "README.md"
 requires-python = "==3.12.*"
-dependencies = [
-    "torch>=2.5.1",
-    "torch-geometric>=2.6.1",
-    "snakemake>=8.27.0",
-    "pyarrow>=19.0.0",
-    "tensorboard>=2.18.0",
-    "seaborn>=0.13.2",
-    "torcheval>=0.0.7",
-    "copairs>=0.4.2",
-    "scikit-learn>=1.6.1",
-    "pyg-lib>=0.4.0",
-    "torch-scatter>=2.1.2",
-    "torch-sparse>=0.6.18",
-    "torch-cluster>=1.6.3",
-    "torch-spline-conv>=1.2.2",
-    "pycomplexheatmap>=1.8.1",
-    "fastcluster>=1.2.6",
-    "umap-learn>=0.5.7",
-]
+# Runtime deps are managed by pixi below (conda-forge), not here.
+dependencies = []
 
-[dependency-groups]
-dev = [
-    "ipdb>=0.13.13",
-    "python-lsp-ruff>=2.2.2",
-    "python-lsp-server>=1.12.0",
-    "rope>=1.13.0",
-    "yapf>=0.40.2",
-    "sqlparse>=0.5.3",
-    "snakefmt>=0.10.2",
-]
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
 
-[tool.uv]
-find-links = [
-    "https://data.pyg.org/whl/torch-2.5.1+cu124.html",
-]
+[tool.setuptools]
+# The repo's importable packages (top-level scripts run from the repo root).
+packages = ["motive", "utils", "plot"]
+py-modules = []
+
+[tool.pixi.workspace]
+channels = ["conda-forge", "bioconda"]
+platforms = ["osx-arm64", "linux-64"]
+
+# Platform-agnostic deps. pytorch itself is platform-gated (features below);
+# the PyG stack here resolves to CUDA builds in the gpu env (cuda
+# system-requirement) and CPU/MPS builds in the osx env. pyg-lib is omitted:
+# no Apple-Silicon build exists and it is optional - torch-sparse handles
+# neighbor sampling on every platform.
+[tool.pixi.dependencies]
+python = "3.12.*"
+pytorch_geometric = ">=2.6"
+pytorch_scatter = "*"
+pytorch_sparse = "*"
+pytorch_cluster = "*"
+pytorch_spline_conv = "*"
+snakemake-minimal = ">=8.27"
+pyarrow = ">=19"
+tensorboard = ">=2.18"
+seaborn = ">=0.13.2"
+scikit-learn = ">=1.6.1"
+umap-learn = ">=0.5.7"
+fastcluster = ">=1.2.6"
+duckdb = "*"
+pip = "*"
+
+[tool.pixi.pypi-dependencies]
+# Install the repo itself (editable) so motive/utils/plot import everywhere,
+# matching the old `uv sync` behavior (needed by e.g. pytest tests/).
+motive = { path = ".", editable = true }
+# Not on conda-forge (or lab package); installed by pixi's PyPI layer.
+copairs = ">=0.4.2"
+torcheval = ">=0.0.7"
+pycomplexheatmap = ">=1.8.1"
+
+# Linux + CUDA: pytorch-gpu pulls the CUDA build; the cuda system-requirement
+# makes the solver pick CUDA variants of the PyG extensions too.
+[tool.pixi.feature.linux-gpu]
+platforms = ["linux-64"]
+system-requirements = { cuda = "12" }
+[tool.pixi.feature.linux-gpu.dependencies]
+pytorch-gpu = ">=2.5"
+
+# macOS (Apple Silicon): plain pytorch ships MPS support.
+[tool.pixi.feature.osx-mps]
+platforms = ["osx-arm64"]
+[tool.pixi.feature.osx-mps.dependencies]
+pytorch = ">=2.5"
+[tool.pixi.feature.osx-mps.activation.env]
+# Let unimplemented MPS ops fall back to CPU instead of erroring.
+PYTORCH_ENABLE_MPS_FALLBACK = "1"
+
+# Dev tooling (formerly the uv [dependency-groups].dev) plus the test runner.
+[tool.pixi.feature.dev.dependencies]
+pytest = "*"
+ipdb = "*"
+python-lsp-server = "*"
+python-lsp-ruff = "*"
+rope = "*"
+yapf = "*"
+sqlparse = "*"
+snakefmt = "*"
+
+[tool.pixi.environments]
+# default = Linux+CUDA (the canonical platform, like nahual). macOS users pick
+# the osx env explicitly: pixi run -e osx ...
+default = { features = ["linux-gpu", "dev"], solve-group = "linux" }
+osx = { features = ["osx-mps", "dev"], solve-group = "osx" }
+
+[tool.pixi.tasks]
+test = "pytest tests/"
+data = "snakemake -c1"

@@ -10,42 +10,41 @@ Code for the NeurIPS 2024 paper "MOTIVE: A Drug-Target Interaction Graph For Ind
 
 ## Environment and commands
 
-Dependencies are managed with **uv** (not conda), pinned in `pyproject.toml` + `uv.lock`: torch 2.5.1 / CUDA 12.4 wheels (via the `[tool.uv] find-links` pyg index), torch-geometric 2.6.1 and the pyg sparse-op stack, snakemake 8, Python 3.12.
+Dependencies are managed entirely with **pixi** (no uv). The single manifest is `pyproject.toml` under `[tool.pixi.*]`, locked in `pixi.lock`, from conda-forge + bioconda: torch-geometric and the pyg sparse-op stack (`pytorch_scatter/sparse/cluster/spline-conv`), snakemake 8, Python 3.12. `copairs`, `torcheval`, `pycomplexheatmap`, and the repo itself (editable) come from pixi's PyPI layer. **`pyg-lib` is intentionally dropped** (no Apple-Silicon build, optional anyway - `torch-sparse` covers neighbor sampling on every platform).
+
+Two pixi **environments**, gated by platform feature (mirrors the lab's nahual setup):
+- **`default`** = `linux-64` + CUDA: `pytorch-gpu` and `system-requirements.cuda = "12"` make the solver pick CUDA builds of pytorch *and* the pyg extensions. This is the GPU servers (spirit / oppy / karkinos).
+- **`osx`** = `osx-arm64` + MPS: plain conda-forge `pytorch` (ships Metal).
+
+So commands are prefixed with `pixi run`, and **macOS picks the osx env explicitly** (bare `pixi run` targets the linux default env, which won't install on a Mac):
 
 ```bash
-uv sync                       # create .venv and install locked deps
-source .venv/bin/activate     # or prefix commands with `uv run`
+# GPU servers (Linux+CUDA):
+pixi run snakemake -s train.smk --configfile gnn.json --config output_path=outputs/
+# macOS (Apple Silicon, MPS):
+pixi run -e osx snakemake -s train.smk --configfile gnn.json --config output_path=outputs/
 ```
 
-### Two environments by platform
+A Nix `flake.nix` + `.envrc` give a dev shell that only provides `pixi` plus (on NixOS) `LD_LIBRARY_PATH=/run/opengl-driver/lib` so conda's `pytorch-gpu` can find `libcuda` - needed on oppy/karkinos, harmless on Ubuntu/macOS. `direnv allow` auto-enters it. conda-forge currently resolves torch/pyg 2.7.x (the old uv pins were 2.5.1/2.6.1); fine, just newer.
 
-- **Linux GPU servers (spirit, oppy, karkinos)** use **uv + the Nix flake**. A Nix `flake.nix` + `.envrc` give a dev shell (CUDA + torch from nixpkgs, plus `uv`, `duckdb`, C runtime libs); `direnv allow` auto-enters it (or `nix develop`), and the shell runs `uv sync`. This is the canonical path and matches `pyproject.toml`/`uv.lock`.
-- **macOS (Apple Silicon)** uses **pixi + conda-forge** (`pixi.toml`/`pixi.lock`), not uv. The uv path can't resolve on a Mac: `pyproject.toml` hard-depends on `pyg-lib`, which has no Apple-Silicon build anywhere. conda-forge ships prebuilt osx-arm64 PyTorch (with MPS) and the PyG compiled extensions, and `pyg-lib` is simply omitted - `torch-sparse` covers neighbor sampling instead. Run things with `pixi run <cmd>` (e.g. `pixi run snakemake -s train.smk ...`). Note conda-forge currently resolves a newer torch/pyg (2.7.x) than the Linux pins (2.5.1/2.6.1); fine for dev, worth knowing.
-
-`DEVICE` (`motive/base.py`) auto-selects **CUDA -> MPS -> CPU** and is shared via `from motive import DEVICE`. Because `PrefetchLoader`'s async transfer is CUDA-only and yields unallocated tensors on MPS, `to_device_loader` uses `PrefetchLoader` on CUDA and moves batches synchronously elsewhere; `PYTORCH_ENABLE_MPS_FALLBACK=1` (set in `pixi.toml`) covers unimplemented MPS ops. So full training runs on Mac GPU via Metal - slower than the H100/RTX boxes, good for development and small runs.
+`DEVICE` (`motive/base.py`) auto-selects **CUDA -> MPS -> CPU**, shared via `from motive import DEVICE`. Because `PrefetchLoader`'s async transfer is CUDA-only and yields unallocated tensors on MPS, `to_device_loader` uses `PrefetchLoader` on CUDA and moves batches synchronously on MPS/CPU; `PYTORCH_ENABLE_MPS_FALLBACK=1` (set in the osx feature's activation) covers unimplemented MPS ops. Full training runs on Mac GPU via Metal - slower than the H100/RTX boxes, good for development and small runs.
 
 Build the dataset (downloads `inputs/` from S3, generates `data/`). Alternatively `aws s3 sync` the prebuilt `data/` and `inputs/` (see README):
 
 ```bash
-snakemake -c1   # default Snakefile; -cN for N cores
+pixi run snakemake -c1     # default Snakefile (`pixi run data` is a shortcut); on macOS add -e osx
 ```
 
-Train + infer + evaluate + plot one model (the whole pipeline for one config):
+Train + infer + evaluate + plot one model: the `pixi run snakemake -s train.smk ...` command above. Random hyperparameter search:
 
 ```bash
-snakemake -s train.smk --configfile gnn.json --config output_path=outputs/
-```
-
-Random hyperparameter search:
-
-```bash
-snakemake -s explore.smk --configfile gnn.json --config output_path=optimize num_search=10
+pixi run snakemake -s explore.smk --configfile gnn.json --config output_path=optimize num_search=10
 ```
 
 Run the tests / formatters (dev deps, not enforced in CI):
 
 ```bash
-pytest tests/             # currently just tests/test_bpr.py
+pixi run test             # = pytest tests/ (currently just tests/test_bpr.py); on macOS: pixi run -e osx pytest tests/
 # pre-commit only runs `trailing-whitespace`; ruff (via python-lsp-ruff), yapf, and snakefmt are available but not hooked
 ```
 
