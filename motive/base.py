@@ -10,6 +10,46 @@ from torch_geometric.loader import LinkNeighborLoader, PrefetchLoader
 from .sample_negatives import SampleNegatives
 
 
+def _select_device() -> torch.device:
+    """CUDA on the GPU servers, MPS on Apple Silicon, CPU otherwise."""
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
+
+DEVICE = _select_device()
+
+
+class _DeviceLoader:
+    """Yield batches moved synchronously to ``device``.
+
+    PyG's ``PrefetchLoader`` uses CUDA pinned-memory / async stream transfers;
+    on MPS that path returns tensors with unallocated storage ("Placeholder
+    storage has not been allocated on MPS device"). We keep ``PrefetchLoader``
+    on CUDA (where its prefetch helps) and use this synchronous mover on
+    MPS/CPU. Mirrors ``PrefetchLoader.loader`` so ``loader.loader.data`` works.
+    """
+
+    def __init__(self, loader, device):
+        self.loader = loader
+        self.device = device
+
+    def __iter__(self):
+        for batch in self.loader:
+            yield batch.to(self.device)
+
+    def __len__(self):
+        return len(self.loader)
+
+
+def to_device_loader(data_loader):
+    if DEVICE.type == "cuda":
+        return to_device_loader(data_loader)
+    return _DeviceLoader(data_loader, DEVICE)
+
+
 def get_counts(data: HeteroData) -> tuple[int, int, dict]:
     num_sources = len(data["source"].node_id)
     num_targets = len(data["target"].node_id)
@@ -276,7 +316,7 @@ def get_cartesian_loader(
         shuffle=shuffle,
         filter_per_worker=True,
     )
-    return PrefetchLoader(loader=data_loader)
+    return to_device_loader(data_loader)
 
 
 def get_loader(
@@ -301,7 +341,7 @@ def get_loader(
         shuffle=shuffle,
         filter_per_worker=True,
     )
-    return PrefetchLoader(loader=data_loader)
+    return to_device_loader(data_loader)
 
 
 def get_loaders(

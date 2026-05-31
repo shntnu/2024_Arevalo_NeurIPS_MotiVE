@@ -3,10 +3,8 @@ import json
 import torch
 
 from model import create_model
-from motive import get_cartesian_loader, get_loaders
+from motive import DEVICE, get_cartesian_loader, get_loaders
 from train import run_test, train_loop
-
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def init(config_path):

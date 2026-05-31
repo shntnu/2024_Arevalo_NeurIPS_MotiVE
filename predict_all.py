@@ -7,12 +7,11 @@ import seaborn as sns
 import torch
 from matplotlib import pyplot as plt
 
-from motive import get_all_st_edges, get_loaders, load_graph_helper
+from motive import DEVICE, get_all_st_edges, get_loaders, load_graph_helper
 from motive.sample_negatives import negative_sampling, select_nodes_to_sample
 from mworkflow import init
 from utils.evaluate import Evaluator
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 mapper = {
     "DOWNREGULATES_CHdG": "downregulates",
     "CdG": "downregulates",
