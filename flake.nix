@@ -26,14 +26,20 @@
         };
       in
       {
-        devShells.default = pkgs.mkShell (
-          {
-            packages = [ pkgs.pixi ];
-          }
-          // pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
-            LD_LIBRARY_PATH = "/run/opengl-driver/lib";
-          }
-        );
+        devShells.default = pkgs.mkShell {
+          packages = [ pkgs.pixi ];
+          # Linux/CUDA glue for conda's pytorch-gpu (no-op on macOS):
+          #  - libcuda lives in /run/opengl-driver/lib on NixOS (harmless on Ubuntu).
+          #  - pixi often can't auto-detect the CUDA driver virtual package in a
+          #    headless shell, so mock __cuda from the real driver version; without
+          #    this the linux-64 (default) env refuses to install.
+          shellHook = pkgs.lib.optionalString pkgs.stdenv.isLinux ''
+            export LD_LIBRARY_PATH=/run/opengl-driver/lib''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+            if command -v nvidia-smi >/dev/null 2>&1; then
+              export CONDA_OVERRIDE_CUDA="$(nvidia-smi | grep -oE 'CUDA Version: [0-9]+\.[0-9]+' | grep -oE '[0-9]+\.[0-9]+' | head -1)"
+            fi
+          '';
+        };
       }
     );
 }

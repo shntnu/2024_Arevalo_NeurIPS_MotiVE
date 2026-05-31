@@ -25,7 +25,7 @@ pixi run snakemake -s train.smk --configfile gnn.json --config output_path=outpu
 pixi run -e osx snakemake -s train.smk --configfile gnn.json --config output_path=outputs/
 ```
 
-A Nix `flake.nix` + `.envrc` give a dev shell that only provides `pixi` plus (on NixOS) `LD_LIBRARY_PATH=/run/opengl-driver/lib` so conda's `pytorch-gpu` can find `libcuda` - needed on oppy/karkinos, harmless on Ubuntu/macOS. `direnv allow` auto-enters it. conda-forge currently resolves torch/pyg 2.7.x (the old uv pins were 2.5.1/2.6.1); fine, just newer.
+A Nix `flake.nix` + `.envrc` give a dev shell providing `pixi`; on Linux its `shellHook` also exports `LD_LIBRARY_PATH=/run/opengl-driver/lib` (so conda's `pytorch-gpu` finds `libcuda` on NixOS - oppy/karkinos; harmless on Ubuntu) and `CONDA_OVERRIDE_CUDA` from the driver version (pixi often can't auto-detect the CUDA virtual package in a headless shell, and without it the linux `default` env refuses to install). **On the servers, enter via the flake** - `direnv allow` (auto on cd) or `nix develop -c pixi ...` - so those vars are set before `pixi install`/`pixi run`. conda-forge currently resolves torch/pyg 2.7.x (the old uv pins were 2.5.1/2.6.1); fine, just newer.
 
 `DEVICE` (`motive/base.py`) auto-selects **CUDA -> MPS -> CPU**, shared via `from motive import DEVICE`. Because `PrefetchLoader`'s async transfer is CUDA-only and yields unallocated tensors on MPS, `to_device_loader` uses `PrefetchLoader` on CUDA and moves batches synchronously on MPS/CPU; `PYTORCH_ENABLE_MPS_FALLBACK=1` (set in the osx feature's activation) covers unimplemented MPS ops. Full training runs on Mac GPU via Metal - slower than the H100/RTX boxes, good for development and small runs.
 
