@@ -24,9 +24,9 @@ def umap(config_path, model_path, umap_path):
     edges = torch.tensor(edges).T.contiguous()
     data["binds"].edge_label_index = edges
     seen_src = data["binds"].edge_index[0].unique().cpu().numpy()
-    seen_src = np.in1d(np.arange(len(data["source"].node_id)), seen_src)
+    seen_src = np.isin(np.arange(len(data["source"].node_id)), seen_src)
     seen_tgt = data["binds"].edge_index[1].unique().cpu().numpy()
-    seen_tgt = np.in1d(np.arange(len(data["target"].node_id)), seen_tgt)
+    seen_tgt = np.isin(np.arange(len(data["target"].node_id)), seen_tgt)
 
     activations = {}
 
