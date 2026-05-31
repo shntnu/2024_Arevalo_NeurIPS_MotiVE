@@ -3,12 +3,16 @@ import plot
 
 rule waterfall:
     input:
-        "{output_path}/config.json",
-        "{output_path}/{infer_mode}/{subset}/results.parquet",
+        config="{output_path}/config.json",
+        preds="{output_path}/{infer_mode}/{subset}/results.parquet",
+        # plot.waterfall reads this annotation table directly. Declaring it as
+        # an input makes the inputs/ dependency explicit so the DAG fetches it
+        # (via download_from_s3) instead of failing late when only data/ exists.
+        annotations="inputs/annotations/compound_gene.parquet",
     output:
         "{output_path}/{infer_mode}/{subset}/analysis/waterfall.pdf",
     run:
-        plot.waterfall(*input, *output)
+        plot.waterfall(input.config, input.preds, *output)
 
 
 rule heatmap:

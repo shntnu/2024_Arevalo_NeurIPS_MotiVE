@@ -35,6 +35,8 @@ Build the dataset (downloads `inputs/` from S3, generates `data/`). Alternativel
 pixi run snakemake -c1     # default Snakefile (`pixi run data` is a shortcut); on macOS add -e osx
 ```
 
+**Both `data/` and `inputs/` are needed for the full pipeline.** Training, inference, and metrics read only `data/` (~849 MiB prebuilt), so a `data/`-only sync is enough to train and score. But the **`waterfall` plot reads `inputs/annotations/compound_gene.parquet`** - `train.smk` declares it as an input and fetches it on demand via `download_from_s3` (`wget` from the public bucket), so a full `train.smk` run will pull `inputs/annotations/` itself. To pre-stage everything: `aws s3 sync --no-sign-request s3://cellpainting-gallery/cpg0034-arevalo-su-motive/broad/workspace/publication_data/2024_MOTIVE .` (grabs both; `inputs/` is ~3.4 GiB).
+
 Train + infer + evaluate + plot one model: the `pixi run snakemake -s train.smk ...` command above. Random hyperparameter search:
 
 ```bash

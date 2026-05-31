@@ -8,6 +8,9 @@ if "hash" not in config:
 
 
 include: "plot.smk"
+# Brings download_from_s3 so the waterfall plot's inputs/annotations dependency
+# can be fetched on demand (training/inference/metrics only need data/).
+include: "rules/jump.smk"
 
 
 wildcard_constraints:
