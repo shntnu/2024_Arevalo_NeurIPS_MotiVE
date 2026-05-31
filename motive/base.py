@@ -46,7 +46,7 @@ class _DeviceLoader:
 
 def to_device_loader(data_loader):
     if DEVICE.type == "cuda":
-        return to_device_loader(data_loader)
+        return PrefetchLoader(loader=data_loader, device=DEVICE)
     return _DeviceLoader(data_loader, DEVICE)
 
 
