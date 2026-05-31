@@ -81,8 +81,10 @@ class SampleNegatives(BaseTransform):
         data["binds"].edge_label = new_label
         data["binds"].edge_label_index = new_edges.contiguous()
 
-        # Add paired indices for bpr
-        split_index = {"source": 0, "target": 1}[self.split]
+        # Add paired indices for bpr. Group by the held-out node type for the
+        # cold splits; the random split has none, so group by source (index 0),
+        # matching the source-centric mAP evaluation in utils/evaluate.py.
+        split_index = {"source": 0, "target": 1}.get(self.split, 0)
         indices = data["binds"].edge_label_index[split_index]
         bpr_indices, bpr_weights = create_positive_negative_pairs(indices, new_label)
         data.bpr_indices = bpr_indices
