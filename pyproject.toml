@@ -44,6 +44,7 @@ scikit-learn = ">=1.6.1"
 umap-learn = ">=0.5.7"
 fastcluster = ">=1.2.6"
 duckdb = "*"
+awscli = "*"            # data download (aws s3 sync) + the snakemake fetch rule
 pip = "*"
 
 [tool.pixi.pypi-dependencies]
