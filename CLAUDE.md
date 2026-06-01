@@ -50,6 +50,27 @@ pixi run test             # = pytest tests/ (currently just tests/test_bpr.py); 
 # pre-commit only runs `trailing-whitespace`; ruff (via python-lsp-ruff), yapf, and snakefmt are available but not hooked
 ```
 
+## Running the benchmark grid / training at scale
+
+`run_grid.sh` sweeps the grid (`graph_type` x `leave_out` x `target_type` x `model:init`); defaults to the `metrics_only` Snakemake target (no per-config plots), resumable.
+
+These models are tiny and **CPU-bound** - one config leaves the GPU at ~0% util. On a multi-GPU server, run many at once: `GPUS=4 JOBS=24 THREADS=16 nix develop -c pixi run bash run_grid.sh` (round-robins configs across GPUs via `CUDA_VISIBLE_DEVICES`, thread-caps each, adds `--nolock` + `--rerun-incomplete`). ~7 GiB GPU/config, so 4 H100s hold dozens.
+
+On servers **always enter via the flake** (`nix develop -c pixi run ...`) so `CONDA_OVERRIDE_CUDA` + libcuda are set; macOS uses `pixi run -e osx ...`.
+
+Indicative != paper: the grid reuses `gnn.json`'s (GNN-tuned) HPs for every config. The paper used per-config tuned HPs (on `main` under `configs/train/`) + BCE / Hits@500; motivev2 uses BPR / min-val-loss. Judge sweeps by relative trends, not absolute numbers.
+
+## Gotchas
+
+- **Keep the deps pinned**: `pandas<3`, `numpy<3`, `copairs<0.5`, `setuptools<81`, `pytorch`/`pytorch_geometric<2.8`. conda/PyPI otherwise pull bleeding-edge releases that removed APIs the code + libs use (`np.in1d`, `DataFrame.applymap`, copairs schema, `pkg_resources`). Don't widen these.
+- **cosine model is inapplicable**: compound features are 737-dim, gene features 722-dim; `CosineSimilarity` needs equal dims. It was never a paper baseline (MLP/Bilinear are). Exclude it.
+- **mlp/bilinear OOM** with `gnn.json`'s `hidden_channels=1024` (`nn.Bilinear` forms N x H x H); give them a small hidden. `bilinear` also OOMs at **cartesian** (all-pairs) inference on big graphs regardless of HPs.
+- **gat (GATv2, `add_self_loops=False`)** throws CUDA faults at cartesian inference / on isolated nodes - currently unresolved; skip or debug separately.
+- **output_path trailing slash changes the config hash** (`outputs` vs `outputs/` -> different hash dir for the same experiment). Be consistent.
+- **eval_freq gates checkpointing**: if `num_epochs < eval_freq` the model never saves and `torch.load` fails at the end. Smoke runs need `num_epochs >= eval_freq`.
+- **evaluate.py acc and roc_auc come out identical/unreliable** on the imbalanced cartesian set - trust mAP / success@k, not AUC.
+- **Hung CUDA procs go uninterruptible (D-state)**: `kill -9` the GPU PID (`nvidia-smi --query-compute-apps=pid`), not just the snakemake parent.
+
 ## Configuration: one config dict, expanded into the Snakemake DAG
 
 There is **no longer a `configs/` directory of per-split JSON files** (that was `main`). A single template lives at the repo root - `gnn.json` - and you override fields on the command line with `--config key=value`. The config holds every axis of a run:
