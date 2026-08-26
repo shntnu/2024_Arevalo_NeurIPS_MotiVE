@@ -10,4 +10,6 @@ data/
 run.sh
 test/
 .pixi/
+outputs/
 *.egg-info/
+.kata.local.toml
