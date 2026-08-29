@@ -4,7 +4,7 @@ import torch
 
 from model import create_model
 from motive import DEVICE, get_cartesian_loader, get_loaders
-from train import run_test, train_loop
+from train import SEED, run_test, train_loop
 
 
 def init(config_path):
@@ -17,6 +17,7 @@ def init(config_path):
         config["neg_ratio"],
     )
     train_data = train_loader.loader.data
+    torch.manual_seed(SEED)
     model = create_model(config, train_data).to(DEVICE)
     loaders = {"train": train_loader, "valid": val_loader, "test": test_loader}
     return config, model, loaders
@@ -28,7 +29,7 @@ def train(config_path, model_path):
 
 
 def infer_sampled(config_path, model_path, subset, preds_path):
-    config, model, loaders = init(config_path)
+    _config, model, loaders = init(config_path)
     best_params = torch.load(model_path, weights_only=True)
     model.load_state_dict(best_params["model_state_dict"])
     preds = run_test(model, loaders[subset])
@@ -36,7 +37,7 @@ def infer_sampled(config_path, model_path, subset, preds_path):
 
 
 def infer_cartesian(config_path, model_path, subset, preds_path):
-    config, model, loaders = init(config_path)
+    _config, model, loaders = init(config_path)
     best_params = torch.load(model_path, weights_only=True)
     model.load_state_dict(best_params["model_state_dict"])
 
