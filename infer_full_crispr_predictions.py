@@ -367,6 +367,8 @@ def validate(root, path, identifiers):
 def main():
     if len(sys.argv) > 2:
         raise SystemExit(f"Usage: {Path(sys.argv[0]).name} [OUTPUT.parquet]")
+    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+    torch.use_deterministic_algorithms(True)
     root = Path.cwd()
     output = Path(sys.argv[1] if len(sys.argv) == 2 else DEFAULT_OUTPUT)
     output = (root / output).resolve()
