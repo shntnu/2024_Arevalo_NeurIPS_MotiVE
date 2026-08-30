@@ -146,37 +146,42 @@ def load_model(root, run, profiles, device):
     return model.eval().to(device), data.to(device), mappings
 
 
-def check_benchmark(root, run, scores, mappings):
+def check_benchmark(root, run, embeddings, mappings):
     """Require raw-score parity and exact stored benchmark top-50 membership."""
     results = pd.read_parquet(
         run_dir(root, run) / "cartesian/test/results.parquet",
         columns=["source", "target", "logits"],
     )
-    source = torch.as_tensor(
-        mappings["source"][results["source"]], device=scores.device
-    )
-    target = torch.as_tensor(
-        mappings["target"][results["target"]], device=scores.device
+    device = embeddings["source"].device
+    source = torch.as_tensor(mappings["source"][results["source"]], device=device)
+    target = torch.as_tensor(mappings["target"][results["target"]], device=device)
+    scores = (
+        (embeddings["source"][source] * embeddings["target"][target])
+        .sum(1)
+        .float()
+        .cpu()
     )
     torch.testing.assert_close(
-        scores[source, target].float().cpu(),
+        scores,
         torch.from_numpy(results["logits"].to_numpy(dtype=np.float32)),
         rtol=0,
         atol=1e-3,
     )
 
-    old_sources = np.sort(results["source"].unique())
-    old_targets = np.sort(results["target"].unique())
-    source = torch.as_tensor(mappings["source"][old_sources], device=scores.device)
-    target = torch.as_tensor(mappings["target"][old_targets], device=scores.device)
-    _, indices = topk(scores[source][:, target], TOP_K, run["dimension"])
     width = len(mappings["target"])
     if run["query"] == "gene":
-        predicted = old_sources[indices.ravel()] * width + np.repeat(old_targets, TOP_K)
         query, candidate = "target", "source"
     else:
-        predicted = np.repeat(old_sources, TOP_K) * width + old_targets[indices.ravel()]
         query, candidate = "source", "target"
+    predicted = (
+        results.assign(_score=scores.numpy())
+        .sort_values([query, "_score", candidate], ascending=[True, False, True])
+        .groupby(query, sort=False)
+        .head(TOP_K)
+    )
+    predicted = predicted["source"].to_numpy(dtype=np.int64) * width + predicted[
+        "target"
+    ].to_numpy(dtype=np.int64)
     expected = (
         results.sort_values([query, "logits", candidate], ascending=[True, False, True])
         .groupby(query, sort=False)
@@ -386,10 +391,10 @@ def main():
             "target": model.target_emb(data["target"].node_id),
         }
         embeddings = model.gnn(nodes, data.edge_index_dict)
+        check_benchmark(root, run, embeddings, mappings)
         scores = embeddings["source"] @ embeddings["target"].T
         if not torch.isfinite(scores).all():
             raise ValueError("Full score matrix contains non-finite values")
-        check_benchmark(root, run, scores, mappings)
         values, indices = topk(scores, TOP_K, run["dimension"])
         tables.append(output_table(run, values, indices, identifiers, known))
         del model, data, embeddings, scores, values, indices
