@@ -158,7 +158,7 @@ rule roc_auc:
     output:
         "{output_path}/{subset}/metrics/roc_auc.npy",
     run:
-        evaluate.accuracy(*input, *output)
+        evaluate.roc_auc(*input, *output)
 
 
 rule hits_at_k:
