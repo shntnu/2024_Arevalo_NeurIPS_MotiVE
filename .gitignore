@@ -13,3 +13,9 @@ test/
 outputs/
 *.egg-info/
 .kata.local.toml
+
+# Third-party skills are installed per-project and recorded in skills-lock.json.
+.agents/skills/hf-cli/
+.agents/skills/huggingface-datasets/
+.claude/skills/hf-cli
+.claude/skills/huggingface-datasets

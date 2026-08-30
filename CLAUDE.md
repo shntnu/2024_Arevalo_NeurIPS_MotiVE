@@ -150,3 +150,18 @@ The code is deliberately generic ("source"/"target") so it can be reused; the MO
 ## Reproducibility notes
 
 Seeds are intentional and split across files: `train.py::SEED = 2024313` (training) and `motive/split.py::SEED = [2023, 7, 12]` (data splits). The full operational documentation (data dictionary, directory contents) is in the [project Wiki](https://github.com/carpenter-singh-lab/motive/wiki), not in this repo.
+
+## Project-local agent skills
+
+Install the Hugging Face CLI and Dataset Viewer skills for Claude Code and Codex from the repository root with the pinned project installer:
+
+```bash
+npx skills@1.5.20 add huggingface/skills \
+  -s hf-cli \
+  -s huggingface-datasets \
+  -a claude-code \
+  -a codex \
+  -y
+```
+
+The installer-owned skill directories and product links are ignored by Git. `skills-lock.json` records the source and observed hashes; replay the command above in a fresh clone because that file does not preserve agent targets or immutable source resolution.
